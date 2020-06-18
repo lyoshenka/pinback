@@ -1,14 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/weppos/publicsuffix-go/publicsuffix"
+	// _ "github.com/motemen/go-loghttp/global" // log http requests
 )
 
 type Client struct {
@@ -45,10 +48,14 @@ func (c Client) Query(path string, values url.Values, data interface{}) error {
 		return fmt.Errorf("bad response: %s", rsp.Status)
 	}
 
-	//a, _ := ioutil.ReadAll(rsp.Body)
-	//fmt.Println(string(a))
+	body, err := ioutil.ReadAll(rsp.Body)
+	if err != nil {
+		return err
+	}
 
-	return json.NewDecoder(rsp.Body).Decode(&data)
+	trimmed := bytes.TrimLeft(body, "\xef\xbb\xbf") // remove UTF-8 BOM
+
+	return json.Unmarshal(trimmed, &data)
 }
 
 func (c Client) Recent() ([]Post, error) {
